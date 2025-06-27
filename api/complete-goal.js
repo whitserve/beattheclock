@@ -19,9 +19,13 @@ export default async (req, res) => {
       formData = await parseBody(req);
     }
     
-    // Extract fields
+    // Extract fields - try multiple possible field names
     email = formData.email || formData.Email;
-    accomplishment = formData.accomplishment || formData.what_finished || formData.finished;
+    accomplishment = formData.accomplishment || formData.what_finished || formData.finished || formData.text || formData.message;
+    
+    // Debug: log all received fields (same as create-session.js)
+    console.log('Received form data:', req.body || 'no req.body');
+    console.log('Parsed form data:', formData);
     
     // Normalize email
     email = email?.toLowerCase().trim();
@@ -31,7 +35,12 @@ export default async (req, res) => {
     if (!email) {
       return res.status(400).json({ 
         error: 'Email is required',
-        debug: { formData }
+        received: { email: !!email, accomplishment: !!accomplishment },
+        debug: { 
+          allFields: req.body || 'no req.body',
+          parsedData: formData,
+          contentType: req.headers['content-type']
+        }
       });
     }
 
