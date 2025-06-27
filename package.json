@@ -11,6 +11,7 @@
   "type": "commonjs",
   "description": "",
   "dependencies": {
+    "@vercel/analytics": "^1.5.0",
     "stripe": "^18.2.1"
   }
 }
