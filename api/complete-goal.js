@@ -61,11 +61,7 @@ export default async (req, res) => {
     console.log(`Found ${userPayments.length} active payments for ${email}`);
 
     if (userPayments.length === 0) {
-      return res.status(404).json({ 
-        error: 'No active goal found',
-        message: 'No active $5 deposit found for this email address. Either you haven\'t started a goal, already completed it, or the 24-hour deadline has passed.',
-        email: email
-      });
+      return res.redirect(303, `https://beattheclock.carrd.co#no-goal-found`);
     }
 
     // Get the most recent active payment
@@ -86,7 +82,7 @@ export default async (req, res) => {
     });
 
     // Redirect to success page
-    return res.redirect(303, `${process.env.SITE_URL}#success`);
+    return res.redirect(303, `https://beattheclock.carrd.co#completed`);
 
   } catch (error) {
     console.error('Error processing goal completion:', error);

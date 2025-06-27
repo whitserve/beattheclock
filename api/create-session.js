@@ -71,8 +71,8 @@ export default async (req, res) => {
       capture_method: 'manual',
       metadata: { email, goal, deadline },
     },
-    success_url: `${process.env.SITE_URL}/done?pi={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.SITE_URL}`,
+    success_url: `https://beattheclock.carrd.co#payment-success`,
+    cancel_url: `https://beattheclock.carrd.co#cancelled`,
   });
 
   return res.redirect(303, session.url);
