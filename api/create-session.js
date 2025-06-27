@@ -44,6 +44,14 @@ export default async (req, res) => {
 
     const deadline = Date.now() + 24 * 60 * 60 * 1000;   // 24 h
 
+    console.log('Creating Stripe session with:', { email, goal, deadline });
+    console.log('Environment check:', {
+      hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+      stripeKeyStart: process.env.STRIPE_SECRET_KEY?.substring(0, 7),
+      hasSiteUrl: !!process.env.SITE_URL,
+      siteUrl: process.env.SITE_URL
+    });
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     payment_method_types: ['card'],
@@ -71,7 +79,34 @@ export default async (req, res) => {
   
   } catch (error) {
     console.error('Error creating checkout session:', error);
-    return res.status(500).json({ error: 'Failed to create checkout session' });
+    
+    // Provide more specific error information
+    let errorMessage = 'Failed to create checkout session';
+    let statusCode = 500;
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      errorMessage = `Stripe error: ${error.message}`;
+      statusCode = 400;
+    } else if (error.code === 'resource_missing') {
+      errorMessage = 'Stripe configuration error - check API keys';
+      statusCode = 500;
+    } else if (!process.env.STRIPE_SECRET_KEY) {
+      errorMessage = 'Missing Stripe API key configuration';
+      statusCode = 500;
+    } else if (!process.env.SITE_URL) {
+      errorMessage = 'Missing SITE_URL configuration';
+      statusCode = 500;
+    }
+    
+    return res.status(statusCode).json({ 
+      error: errorMessage,
+      details: error.message,
+      type: error.type || 'Unknown',
+      debug: {
+        hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
+        hasSiteUrl: !!process.env.SITE_URL
+      }
+    });
   }
 };
 
