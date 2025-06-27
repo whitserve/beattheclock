@@ -26,6 +26,14 @@ export default async (req, res) => {
     // Debug: log all received fields (same as create-session.js)
     console.log('Received form data:', req.body || 'no req.body');
     console.log('Parsed form data:', formData);
+    console.log('Content-Type:', req.headers['content-type']);
+    console.log('Form field extraction:', { 
+      email: formData.email, 
+      Email: formData.Email,
+      accomplishment: formData.accomplishment,
+      what_finished: formData.what_finished,
+      finished: formData.finished 
+    });
     
     // Normalize email
     email = email?.toLowerCase().trim();
@@ -33,15 +41,8 @@ export default async (req, res) => {
     console.log('Goal completion attempt:', { email, accomplishment });
     
     if (!email) {
-      return res.status(400).json({ 
-        error: 'Email is required',
-        received: { email: !!email, accomplishment: !!accomplishment },
-        debug: { 
-          allFields: req.body || 'no req.body',
-          parsedData: formData,
-          contentType: req.headers['content-type']
-        }
-      });
+      console.log('Email missing from form submission:', { formData, contentType: req.headers['content-type'] });
+      return res.redirect(303, `https://beattheclock.carrd.co#form-error`);
     }
 
     // Find user's active payments
@@ -86,10 +87,7 @@ export default async (req, res) => {
 
   } catch (error) {
     console.error('Error processing goal completion:', error);
-    return res.status(500).json({ 
-      error: 'Failed to process goal completion',
-      details: error.message 
-    });
+    return res.redirect(303, `https://beattheclock.carrd.co#no-goal-found`);
   }
 };
 
