@@ -135,34 +135,33 @@ async function parseBody(req) {
           const parts = body.split(`--${boundary}`);
           console.log('Found', parts.length, 'parts');
           
-          for (let i = 0; i < parts.length; i++) {
-            const part = parts[i];
-            if (part.includes('Content-Disposition: form-data')) {
-              console.log(`Processing part ${i}:`, part.substring(0, 200));
-              
-              // Extract field name
-              const nameMatch = part.match(/name="([^"]+)"/);
-              if (nameMatch) {
-                const fieldName = nameMatch[1];
-                // Extract value (after the double newline)
-                const lines = part.split('\r\n');
-                let valueStartIndex = -1;
-                
-                // Find where the actual value starts (after headers)
-                for (let j = 0; j < lines.length; j++) {
-                  if (lines[j] === '' && j + 1 < lines.length) {
-                    valueStartIndex = j + 1;
-                    break;
-                  }
-                }
-                
-                if (valueStartIndex !== -1 && lines[valueStartIndex]) {
-                  result[fieldName] = lines[valueStartIndex].trim();
-                  console.log(`Extracted ${fieldName}:`, result[fieldName]);
-                }
-              }
-            }
-          }
+                     for (let i = 0; i < parts.length; i++) {
+             const part = parts[i];
+             if (part.includes('Content-Disposition: form-data')) {
+               console.log(`Processing part ${i}:`, part.substring(0, 200));
+               
+               // Extract field name
+               const nameMatch = part.match(/name="([^"]+)"/);
+               if (nameMatch) {
+                 const fieldName = nameMatch[1];
+                 
+                 // Split by double line break to separate headers from content
+                 const headerContentSplit = part.split('\r\n\r\n');
+                 if (headerContentSplit.length >= 2) {
+                   // Get the content part (everything after headers)
+                   let value = headerContentSplit[1];
+                   
+                   // Remove any trailing boundary markers or whitespace
+                   value = value.split('\r\n')[0].trim();
+                   
+                   if (value && value !== '') {
+                     result[fieldName] = value;
+                     console.log(`Extracted ${fieldName}:`, result[fieldName]);
+                   }
+                 }
+               }
+             }
+           }
           
           console.log('Final parsed result:', result);
           resolve(result);
