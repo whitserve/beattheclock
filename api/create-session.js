@@ -27,6 +27,7 @@ export default async (req, res) => {
 
     // Debug: log all received fields
     console.log('Received form data:', req.body || 'no req.body');
+    console.log('Parsed form data:', formData);
     
     // Validate required fields
     if (!email || !goal) {
@@ -35,6 +36,7 @@ export default async (req, res) => {
         received: { email: !!email, goal: !!goal },
         debug: { 
           allFields: req.body || 'no req.body',
+          parsedData: formData,
           contentType: req.headers['content-type']
         }
       });
@@ -76,33 +78,83 @@ export default async (req, res) => {
 // Helper function to parse request body
 async function parseBody(req) {
   return new Promise((resolve, reject) => {
+    const contentType = req.headers['content-type'] || '';
     let body = '';
+    
     req.on('data', chunk => {
       body += chunk.toString();
     });
+    
     req.on('end', () => {
       try {
-        console.log('Raw body:', body);
-        console.log('Content-Type:', req.headers['content-type']);
+        console.log('Raw body length:', body.length);
+        console.log('Content-Type:', contentType);
         
-        // Try to parse as JSON first
-        if (req.headers['content-type']?.includes('application/json')) {
-          resolve(JSON.parse(body));
-        } else {
-          // Parse as form data (application/x-www-form-urlencoded)
-          const params = new URLSearchParams(body);
+        // Handle multipart/form-data (what Carrd sends)
+        if (contentType.includes('multipart/form-data')) {
+          const boundary = contentType.split('boundary=')[1];
+          console.log('Boundary:', boundary);
+          
           const result = {};
-          for (const [key, value] of params) {
-            result[key] = value;
+          // Split by boundary and parse each part
+          const parts = body.split(`--${boundary}`);
+          console.log('Found', parts.length, 'parts');
+          
+          for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            if (part.includes('Content-Disposition: form-data')) {
+              console.log(`Processing part ${i}:`, part.substring(0, 200));
+              
+              // Extract field name
+              const nameMatch = part.match(/name="([^"]+)"/);
+              if (nameMatch) {
+                const fieldName = nameMatch[1];
+                // Extract value (after the double newline)
+                const lines = part.split('\r\n');
+                let valueStartIndex = -1;
+                
+                // Find where the actual value starts (after headers)
+                for (let j = 0; j < lines.length; j++) {
+                  if (lines[j] === '' && j + 1 < lines.length) {
+                    valueStartIndex = j + 1;
+                    break;
+                  }
+                }
+                
+                if (valueStartIndex !== -1 && lines[valueStartIndex]) {
+                  result[fieldName] = lines[valueStartIndex].trim();
+                  console.log(`Extracted ${fieldName}:`, result[fieldName]);
+                }
+              }
+            }
           }
-          console.log('Parsed form data:', result);
+          
+          console.log('Final parsed result:', result);
           resolve(result);
+          return;
         }
+        
+        // Handle JSON
+        if (contentType.includes('application/json')) {
+          resolve(JSON.parse(body));
+          return;
+        }
+        
+        // Handle URL-encoded form data
+        const params = new URLSearchParams(body);
+        const result = {};
+        for (const [key, value] of params) {
+          result[key] = value;
+        }
+        console.log('Parsed URL-encoded data:', result);
+        resolve(result);
+        
       } catch (error) {
         console.error('Error parsing body:', error);
         reject(error);
       }
     });
+    
     req.on('error', (error) => {
       console.error('Request error:', error);
       reject(error);
