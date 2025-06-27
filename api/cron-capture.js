@@ -12,18 +12,20 @@ export default async (req, res) => {
   try {
     console.log('Starting cron job: checking for expired payments...');
 
-    // Get all payment intents that need capture
+    // Get all payment intents (Stripe API doesn't support status filter)
     const paymentIntents = await stripe.paymentIntents.list({
-      status: 'requires_capture',
       limit: 100,
     });
 
-    console.log(`Found ${paymentIntents.data.length} payments requiring capture`);
+    // Filter for payments that require capture
+    const requiresCapturePayments = paymentIntents.data.filter(pi => pi.status === 'requires_capture');
+    
+    console.log(`Found ${paymentIntents.data.length} total payments, ${requiresCapturePayments.length} requiring capture`);
 
     let expiredCount = 0;
     let capturedCount = 0;
     
-    for (const pi of paymentIntents.data) {
+    for (const pi of requiresCapturePayments) {
       const deadline = Number(pi.metadata.deadline);
       const now = Date.now();
       
@@ -55,7 +57,8 @@ export default async (req, res) => {
     
     return res.json({
       success: true,
-      totalChecked: paymentIntents.data.length,
+      totalPayments: paymentIntents.data.length,
+      requiresCapture: requiresCapturePayments.length,
       expiredFound: expiredCount,
       successfullyCaptured: capturedCount,
       timestamp: new Date().toISOString()
